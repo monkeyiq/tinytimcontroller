@@ -46,11 +46,10 @@ void setup()
   Serial << "starting radio..." << endl;
   radio.begin();
   radio.setRetries(15,15);
+
   // write mode.
-      radio.openWritingPipe(pipes[0]);
-      radio.openReadingPipe(1,pipes[1]);  
-      
-      
+  radio.openWritingPipe(pipes[0]);
+  radio.openReadingPipe(1,pipes[1]);  
       
   radio.startListening();
   radio.printDetails();
@@ -60,19 +59,24 @@ void setup()
 
 void loop() 
 {
-  int joyv =   analogRead( pin_joyv );
-  int joyh =   analogRead( pin_joyh );
+  int joyv = analogRead( pin_joyv );
+  int joyh = analogRead( pin_joyh );
   
   radio.stopListening();
   struct radiomsg m;
-  m.type = RMSG_JOYXY;
+  m.type    = RMSG_JOYXY;
   m.joyxy.h = joyh;
   m.joyxy.v = joyv;
-  bool ok = radio.write( &m, sizeof(radiomsg) );
+  bool ok   = radio.write( &m, sizeof(radiomsg) );
+
+  // we are write only really, but we want those ack packets to get
+  // back to us.
   radio.startListening();
+
+  // debugs
 //  Serial << "sz:" << sizeof(radiomsg) << " send ok:" << ok << " joyh:" << joyh << " joyv:" << joyv << endl;
-  
-   
+
+  // don't flood it.
   delay(20);
 }
 
