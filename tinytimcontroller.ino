@@ -1,16 +1,12 @@
 #include <Streaming.h>
 #include <SPI.h>
-#include "nRF24L01.h"
-#include "RF24.h"
 #include "printf.h"
 #include "Switch.h"
+#include "nRF24L01.h"
+#include "RF24.h"
+#include "monkeyiqrf24.h"
 
-
-
-
-RF24 radio(9,10);
-// Radio pipe addresses for the 2 nodes to communicate.
-const uint64_t pipes[2] = { 0xF0F0F0F0E1LL, 0xF0F0F0F0D2LL };
+monkeyiqrf24 radio;
 
 enum { RMSG_JOYXY = 1, RMSG_JOYBUTTON_DOWN = 10, RMSG_JOYBUTTON_UP = 11 } RADIOMSGTYPES;
 struct radiomsg {
@@ -61,15 +57,7 @@ void setup()
   pinMode( pin_joyh, INPUT );
 
   Serial << "starting radio..." << endl;
-  radio.begin();
-  radio.setRetries(15,15);
-
-  // write mode.
-  radio.openWritingPipe(pipes[0]);
-  radio.openReadingPipe(1,pipes[1]);  
-      
-  radio.startListening();
-  radio.printDetails();
+  radio.setup();
   Serial << "starting loop..." << endl;
 
 }
@@ -99,12 +87,11 @@ void loop()
     if( b )
     {
  //     Serial << "button pressed. b:" << b << endl;
-      radio.stopListening();
+
       struct radiomsg m;
       m.type    = RMSG_JOYBUTTON_DOWN;
       m.joyb.b  = b;
-      bool ok   = radio.write( &m, sizeof(radiomsg) );
-      radio.startListening();      
+      bool ok = radio.sendMessage( m );
     }
     b = 0;
       if( swa.released() )
@@ -124,31 +111,25 @@ void loop()
     if( b )
     {
 //      Serial << "button released. b:" << b  << endl;
-      radio.stopListening();
       struct radiomsg m;
       m.type    = RMSG_JOYBUTTON_UP;
       m.joyb.b  = b;
-      bool ok   = radio.write( &m, sizeof(radiomsg) );
-      radio.startListening();      
+      bool ok = radio.sendMessage( m );
     }
     
   
   int joyv = analogRead( pin_joyv );
   int joyh = analogRead( pin_joyh );
   
-  radio.stopListening();
   struct radiomsg m;
   m.type    = RMSG_JOYXY;
   m.joyxy.h = joyh;
   m.joyxy.v = joyv;
-  bool ok   = radio.write( &m, sizeof(radiomsg) );
+  bool ok = radio.sendMessage( m );
 
-  // we are write only really, but we want those ack packets to get
-  // back to us.
-  radio.startListening();
 
   // debugs
-//  Serial << "sz:" << sizeof(radiomsg) << " send ok:" << ok << " joyh:" << joyh << " joyv:" << joyv << endl;
+  Serial << "sz:" << sizeof(radiomsg) << " send ok:" << ok << " joyh:" << joyh << " joyv:" << joyv << endl;
 
   // don't flood it.
   delay(20);
